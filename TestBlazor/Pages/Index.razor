@@ -1,0 +1,119 @@
+﻿@page "/"
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Model
+@inject HttpClient Http
+
+<h1>Users</h1>
+<br />
+@if (usersList != null)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr class="thead-dark">
+                <th>Name</th>
+                <th>UserName</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>WebSite</th>
+                <th>Albums</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in usersList)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Username</td>
+                    <td>@item.Email</td>
+                    <td>@item.Phone</td>
+                    <td>@item.Website</td>
+                    <td><button class="btn btn-primary" @onclick="() => fillAlbums(item.Id)">Fill Albums</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<br />
+
+@if (albumsList != null)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr class="thead-dark">
+                <th>Title</th>
+                <th>Photos</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in albumsList)
+            {
+                <tr>
+                    <td>@item.Title</td>
+                    <td><button class="btn btn-primary" @onclick="() => fillPhotos(item.Id)">Fill Photos</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<br />
+
+@if (photoList != null)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr class="thead-dark">
+                <th>Url</th>
+                <th>Thumbnail</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in photoList)
+            {
+                <tr>
+                    <td>@item.Url</td>
+                    <td>
+                        <img src=@item.ThumbnailUrl />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<User> usersList;
+    private List<Album> albumsList;
+    private List<Photo> photoList;
+    bool loadingAlbums = false;
+    private string errorMessage;
+    protected override async Task OnInitializedAsync() =>
+        usersList = await Http.GetFromJsonAsync<List<User>>("Users/GetUsers");
+
+    private async Task fillAlbums(int userId)
+    {
+        loadingAlbums = true;
+        var httpResponse = await Http.GetAsync("Albums/GetAlbumsByUserId?UserId=" + userId);
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            errorMessage = httpResponse.ReasonPhrase;
+            Console.WriteLine($"There was an error! {errorMessage}");
+            return;
+        }
+
+        albumsList = await httpResponse.Content.ReadFromJsonAsync<List<Album>>();
+    }
+    private async Task fillPhotos(int albumId)
+    {
+        var httpResponse = await Http.GetAsync("Photo/GetPhotosByAlbumId?AlbumId=" + albumId).ConfigureAwait(false);
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            // set error message for display, log to console and return
+            errorMessage = httpResponse.ReasonPhrase;
+            Console.WriteLine($"There was an error! {errorMessage}");
+            return;
+        }
+        photoList = await httpResponse.Content.ReadFromJsonAsync<List<Photo>>();
+    }
+}
